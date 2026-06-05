@@ -6,7 +6,8 @@
  *   - "none"              → disabled (default; Claude sets its own via set_summary)
  *   - "anthropic"         → Anthropic Messages API (default model: claude-haiku-4-5)
  *   - "openai"            → OpenAI / Azure / any OpenAI Chat Completions endpoint
- *   - "openai-compatible" → alias of "openai" (OpenRouter, Groq, Together, ...)
+ *   - "openai-compatible" → alias of "openai" (Groq, Together, custom base URL, ...)
+ *   - "openrouter"        → OpenRouter (https://openrouter.ai/api/v1)
  *   - "claude-cli"        → spawn `claude -p` headless (uses claude.ai login, no API key)
  *
  * Backward compatibility: if CLAUDE_PEERS_SUMMARY_PROVIDER is unset but
@@ -35,7 +36,12 @@ function buildContext(context: {
   return parts.join("\n");
 }
 
-function resolveProvider(): "none" | "anthropic" | "openai" | "claude-cli" {
+function resolveProvider():
+  | "none"
+  | "anthropic"
+  | "openai"
+  | "openrouter"
+  | "claude-cli" {
   const explicit = (process.env.CLAUDE_PEERS_SUMMARY_PROVIDER ?? "")
     .trim()
     .toLowerCase();
@@ -44,6 +50,7 @@ function resolveProvider(): "none" | "anthropic" | "openai" | "claude-cli" {
     explicit === "none" ||
     explicit === "anthropic" ||
     explicit === "openai" ||
+    explicit === "openrouter" ||
     explicit === "claude-cli"
   ) {
     return explicit;
@@ -72,6 +79,8 @@ export async function generateSummary(context: {
         return await summarizeAnthropic(userPrompt);
       case "openai":
         return await summarizeOpenAI(userPrompt);
+      case "openrouter":
+        return await summarizeOpenRouter(userPrompt);
       case "claude-cli":
         return await summarizeClaudeCli(userPrompt);
     }
@@ -129,6 +138,46 @@ async function summarizeOpenAI(userPrompt: string): Promise<string | null> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  return data.choices?.[0]?.message?.content?.trim() ?? null;
+}
+
+/** OpenRouter — OpenAI-compatible Chat Completions at openrouter.ai. */
+async function summarizeOpenRouter(userPrompt: string): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return null;
+  const model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-haiku-4.5";
+  const baseUrl =
+    process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+  // Optional OpenRouter attribution headers.
+  if (process.env.OPENROUTER_REFERER)
+    headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER;
+  if (process.env.OPENROUTER_TITLE)
+    headers["X-Title"] = process.env.OPENROUTER_TITLE;
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers,
     body: JSON.stringify({
       model,
       messages: [

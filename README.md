@@ -95,7 +95,8 @@ Each instance can generate a brief summary on startup describing what you're lik
 | `none` (default)      | Disabled — Claude sets its own via `set_summary`     | nothing |
 | `anthropic`           | Anthropic Messages API (default `claude-haiku-4-5`)  | `ANTHROPIC_API_KEY` |
 | `openai`              | OpenAI Chat Completions (default `gpt-5.4-nano`)     | `OPENAI_API_KEY` |
-| `openai-compatible`   | Any OpenAI-compatible endpoint (OpenRouter, Groq, …) | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
+| `openai-compatible`   | Any OpenAI-compatible endpoint (Groq, Together, …)   | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
+| `openrouter`          | OpenRouter (default `anthropic/claude-haiku-4.5`)    | `OPENROUTER_API_KEY` |
 | `claude-cli`          | Spawns `claude -p` headless — **no API key**, uses your claude.ai login | `claude` v2.1.80+ on PATH |
 
 **Backward compatible:** if `CLAUDE_PEERS_SUMMARY_PROVIDER` is unset but `OPENAI_API_KEY` is present, it behaves as the original OpenAI path. The summary costs a fraction of a cent per session (or nothing with `claude-cli` / `none`).
@@ -128,6 +129,10 @@ bun cli.ts kill-broker       # stop the broker
 | `OPENAI_API_KEY`     | —                    | Auth for `openai` / `openai-compatible` |
 | `OPENAI_MODEL`       | `gpt-5.4-nano`       | Model for `openai` provider           |
 | `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | OpenAI-compatible endpoint base |
+| `OPENROUTER_API_KEY` | —                    | Auth for `openrouter` provider        |
+| `OPENROUTER_MODEL`   | `anthropic/claude-haiku-4.5` | Model for `openrouter` provider |
+| `OPENROUTER_BASE_URL`| `https://openrouter.ai/api/v1` | Override OpenRouter endpoint  |
+| `OPENROUTER_REFERER` / `OPENROUTER_TITLE` | — | Optional OpenRouter attribution headers |
 | `CLAUDE_PEERS_CLI_MODEL` | `haiku`          | Model alias for `claude-cli` provider |
 | `CLAUDE_PEERS_CLAUDE_BIN` | `claude`        | Path to the `claude` binary           |
 
