@@ -88,9 +88,19 @@ The broker auto-launches when the first session starts. It cleans up dead peers 
 
 ## Auto-summary
 
-If you set `OPENAI_API_KEY` in your environment, each instance generates a brief summary on startup using `gpt-5.4-nano` (costs fractions of a cent). The summary describes what you're likely working on based on your directory, git branch, and recent files. Other instances see this when they call `list_peers`.
+Each instance can generate a brief summary on startup describing what you're likely working on (based on your directory, git branch, and recent files). Other instances see it when they call `list_peers`. This is **provider-agnostic** — pick the backend with `CLAUDE_PEERS_SUMMARY_PROVIDER`:
 
-Without the API key, Claude sets its own summary via the `set_summary` tool.
+| Provider value        | Backend                                              | Requires |
+| --------------------- | ---------------------------------------------------- | -------- |
+| `none` (default)      | Disabled — Claude sets its own via `set_summary`     | nothing |
+| `anthropic`           | Anthropic Messages API (default `claude-haiku-4-5`)  | `ANTHROPIC_API_KEY` |
+| `openai`              | OpenAI Chat Completions (default `gpt-5.4-nano`)     | `OPENAI_API_KEY` |
+| `openai-compatible`   | Any OpenAI-compatible endpoint (OpenRouter, Groq, …) | `OPENAI_API_KEY` + `OPENAI_BASE_URL` |
+| `claude-cli`          | Spawns `claude -p` headless — **no API key**, uses your claude.ai login | `claude` v2.1.80+ on PATH |
+
+**Backward compatible:** if `CLAUDE_PEERS_SUMMARY_PROVIDER` is unset but `OPENAI_API_KEY` is present, it behaves as the original OpenAI path. The summary costs a fraction of a cent per session (or nothing with `claude-cli` / `none`).
+
+If no provider is configured, Claude sets its own summary via the `set_summary` tool.
 
 ## CLI
 
@@ -111,7 +121,15 @@ bun cli.ts kill-broker       # stop the broker
 | -------------------- | -------------------- | ------------------------------------- |
 | `CLAUDE_PEERS_PORT`  | `7899`               | Broker port                           |
 | `CLAUDE_PEERS_DB`    | `~/.claude-peers.db` | SQLite database path                  |
-| `OPENAI_API_KEY`     | —                    | Enables auto-summary via gpt-5.4-nano |
+| `CLAUDE_PEERS_SUMMARY_PROVIDER` | `none` (or `openai` if `OPENAI_API_KEY` set) | Auto-summary backend: `none` / `anthropic` / `openai` / `openai-compatible` / `claude-cli` |
+| `ANTHROPIC_API_KEY`  | —                    | Auth for `anthropic` provider         |
+| `ANTHROPIC_MODEL`    | `claude-haiku-4-5`   | Model for `anthropic` provider        |
+| `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | Override Anthropic endpoint    |
+| `OPENAI_API_KEY`     | —                    | Auth for `openai` / `openai-compatible` |
+| `OPENAI_MODEL`       | `gpt-5.4-nano`       | Model for `openai` provider           |
+| `OPENAI_BASE_URL`    | `https://api.openai.com/v1` | OpenAI-compatible endpoint base |
+| `CLAUDE_PEERS_CLI_MODEL` | `haiku`          | Model alias for `claude-cli` provider |
+| `CLAUDE_PEERS_CLAUDE_BIN` | `claude`        | Path to the `claude` binary           |
 
 ## Requirements
 
